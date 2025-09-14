@@ -1,4 +1,4 @@
-# Simulator configuration for {{PROJECT_NAME}}
+# Simulator configuration for CITestApp
 # This file is used by scripts/simulator.sh and scripts/test.sh
 # to determine which simulators to use for testing.
 #
@@ -8,13 +8,13 @@
 
 simulators:
   tests:
-    device: "iPhone 15 Pro"
-    os: "{{DEPLOYMENT_TARGET}}"
-    arch: "{{SIMULATOR_ARCH}}"
+    device: "iPhone 16 Pro"
+    os: "18.0"
+    arch: "arm64"
   ui-tests:
-    device: "iPhone 15 Pro"
-    os: "{{DEPLOYMENT_TARGET}}"
-    arch: "{{SIMULATOR_ARCH}}"
+    device: "iPhone 16 Pro"
+    os: "18.0"
+    arch: "arm64"
 
 # Available device types can be listed with:
 #   ./scripts/simulator.sh list --family iPhone

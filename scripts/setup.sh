@@ -15,8 +15,20 @@ PROJECT_NAME=""
 DEPLOYMENT_TARGET="18.0"
 SWIFT_VERSION="5.10"
 PROJECT_TYPE="private"  # private or public
+BUNDLE_ID_ROOT="com.yourcompany"
+TEST_FRAMEWORK="swift-testing"  # swift-testing or xctest
+USE_GIT_HOOKS=true
 FORCE_OVERWRITE=false
 SKIP_BREW=false
+
+# Track which values were set via CLI
+CLI_PROJECT_NAME_SET=false
+CLI_DEPLOYMENT_TARGET_SET=false
+CLI_SWIFT_VERSION_SET=false
+CLI_VISIBILITY_SET=false
+CLI_BUNDLE_ID_ROOT_SET=false
+CLI_TEST_FRAMEWORK_SET=false
+CLI_GIT_HOOKS_SET=false
 
 show_help() {
   cat <<EOF
@@ -32,10 +44,16 @@ USAGE:
 OPTIONS:
   --project-name <name>         Project name (e.g., "FooApp")
                                Must be a valid Swift identifier
+  --bundle-id-root <root>       Bundle identifier root (default: $BUNDLE_ID_ROOT)
+                               Format: com.yourname or com.company
   --deployment-target <version> iOS deployment target (default: $DEPLOYMENT_TARGET)
                                Format: X.Y (e.g., 16.0, 17.5, 18.1)
   --swift-version <version>     Swift version (default: $SWIFT_VERSION)
                                Format: X.Y (e.g., 5.9, 5.10, 6.0)
+  --test-framework <framework> Test framework (default: $TEST_FRAMEWORK)
+                               Options: swift-testing, xctest
+  --git-hooks                  Enable git pre-commit hooks (default)
+  --no-git-hooks              Disable git pre-commit hooks
   --public                     Make this a public project (includes LICENSE in README)
   --private                    Make this a private project (default)
   --force                      Overwrite existing files without prompting
@@ -78,6 +96,16 @@ parse_arguments() {
           exit 1
         fi
         PROJECT_NAME="$2"
+        CLI_PROJECT_NAME_SET=true
+        shift 2
+        ;;
+      --bundle-id-root)
+        if [[ -z "${2:-}" ]]; then
+          log_error "Option --bundle-id-root requires a value"
+          exit 1
+        fi
+        BUNDLE_ID_ROOT="$2"
+        CLI_BUNDLE_ID_ROOT_SET=true
         shift 2
         ;;
       --deployment-target)
@@ -86,6 +114,7 @@ parse_arguments() {
           exit 1
         fi
         DEPLOYMENT_TARGET="$2"
+        CLI_DEPLOYMENT_TARGET_SET=true
         shift 2
         ;;
       --swift-version)
@@ -94,7 +123,31 @@ parse_arguments() {
           exit 1
         fi
         SWIFT_VERSION="$2"
+        CLI_SWIFT_VERSION_SET=true
         shift 2
+        ;;
+      --test-framework)
+        if [[ -z "${2:-}" ]]; then
+          log_error "Option --test-framework requires a value"
+          exit 1
+        fi
+        if [[ "$2" != "swift-testing" && "$2" != "xctest" ]]; then
+          log_error "Invalid test framework: $2. Must be 'swift-testing' or 'xctest'"
+          exit 1
+        fi
+        TEST_FRAMEWORK="$2"
+        CLI_TEST_FRAMEWORK_SET=true
+        shift 2
+        ;;
+      --git-hooks)
+        USE_GIT_HOOKS=true
+        CLI_GIT_HOOKS_SET=true
+        shift
+        ;;
+      --no-git-hooks)
+        USE_GIT_HOOKS=false
+        CLI_GIT_HOOKS_SET=true
+        shift
         ;;
       --public)
         if [[ "$PROJECT_TYPE" == "private" ]]; then
@@ -103,6 +156,7 @@ parse_arguments() {
           log_error "Conflicting options: --public specified but PROJECT_TYPE is already '$PROJECT_TYPE'"
           exit 1
         fi
+        CLI_VISIBILITY_SET=true
         shift
         ;;
       --private)
@@ -111,6 +165,7 @@ parse_arguments() {
           exit 1
         fi
         PROJECT_TYPE="private"
+        CLI_VISIBILITY_SET=true
         shift
         ;;
       --force)
@@ -154,6 +209,16 @@ validate_inputs() {
       has_errors=true
     fi
   fi
+  
+  # Validate bundle ID root
+  if [[ -n "$BUNDLE_ID_ROOT" ]]; then
+    if ! validate_bundle_id_root "$BUNDLE_ID_ROOT"; then
+      log_error "Invalid bundle ID root: '$BUNDLE_ID_ROOT'"
+      log_info "Bundle ID root must be in reverse domain format"
+      log_info "Examples: com.yourname, com.company, io.github.username"
+      has_errors=true
+    fi
+  fi
 
   # Validate deployment target
   if ! validate_ios_version "$DEPLOYMENT_TARGET"; then
@@ -175,8 +240,8 @@ validate_inputs() {
 }
 
 prompt_for_missing_info() {
-  # Only prompt for project name if not provided or invalid
-  if [[ -z "$PROJECT_NAME" ]]; then
+  # Only prompt for project name if not provided via CLI
+  if [[ "$CLI_PROJECT_NAME_SET" == false ]]; then
     while true; do
       echo
       read -p "Enter project name (e.g., MyApp): " PROJECT_NAME
@@ -188,30 +253,81 @@ prompt_for_missing_info() {
     done
   fi
 
-  # Confirm deployment target
-  echo
-  read -p "iOS deployment target (default: $DEPLOYMENT_TARGET): " input_deployment_target
-  if [[ -n "$input_deployment_target" ]]; then
-    DEPLOYMENT_TARGET="$input_deployment_target"
-    if ! validate_ios_version "$DEPLOYMENT_TARGET"; then
-      log_error "Invalid deployment target format. Using default: $DEPLOYMENT_TARGET"
-      DEPLOYMENT_TARGET="18.0"
+  # Only prompt for bundle ID root if not provided via CLI
+  if [[ "$CLI_BUNDLE_ID_ROOT_SET" == false ]]; then
+    while true; do
+      echo
+      read -p "Bundle ID root (default: $BUNDLE_ID_ROOT): " input_bundle_id_root
+      if [[ -n "$input_bundle_id_root" ]]; then
+        if validate_bundle_id_root "$input_bundle_id_root"; then
+          BUNDLE_ID_ROOT="$input_bundle_id_root"
+          break
+        else
+          log_error "Invalid bundle ID root. Use reverse domain format (e.g., com.yourname)"
+        fi
+      else
+        break  # Use default
+      fi
+    done
+  fi
+
+  # Only prompt for deployment target if not provided via CLI
+  if [[ "$CLI_DEPLOYMENT_TARGET_SET" == false ]]; then
+    echo
+    read -p "iOS deployment target (default: $DEPLOYMENT_TARGET): " input_deployment_target
+    if [[ -n "$input_deployment_target" ]]; then
+      DEPLOYMENT_TARGET="$input_deployment_target"
+      if ! validate_ios_version "$DEPLOYMENT_TARGET"; then
+        log_error "Invalid deployment target format. Using default: $DEPLOYMENT_TARGET"
+        DEPLOYMENT_TARGET="18.0"
+      fi
     fi
   fi
 
-  # Confirm Swift version
-  echo
-  read -p "Swift version (default: $SWIFT_VERSION): " input_swift_version
-  if [[ -n "$input_swift_version" ]]; then
-    SWIFT_VERSION="$input_swift_version"
-    if ! validate_swift_version "$SWIFT_VERSION"; then
-      log_error "Invalid Swift version format. Using default: $SWIFT_VERSION"
-      SWIFT_VERSION="5.10"
+  # Only prompt for Swift version if not provided via CLI
+  if [[ "$CLI_SWIFT_VERSION_SET" == false ]]; then
+    echo
+    read -p "Swift version (default: $SWIFT_VERSION): " input_swift_version
+    if [[ -n "$input_swift_version" ]]; then
+      SWIFT_VERSION="$input_swift_version"
+      if ! validate_swift_version "$SWIFT_VERSION"; then
+        log_error "Invalid Swift version format. Using default: $SWIFT_VERSION"
+        SWIFT_VERSION="5.10"
+      fi
     fi
   fi
 
-  # Ask about project visibility if not specified
-  if [[ "$PROJECT_TYPE" == "private" && -z "${PROJECT_TYPE_SET:-}" ]]; then
+  # Only prompt for test framework if not provided via CLI
+  if [[ "$CLI_TEST_FRAMEWORK_SET" == false ]]; then
+    echo
+    while true; do
+      read -p "Test framework (swift-testing/xctest, default: $TEST_FRAMEWORK): " input_test_framework
+      if [[ -z "$input_test_framework" ]]; then
+        break  # Use default
+      elif [[ "$input_test_framework" == "swift-testing" || "$input_test_framework" == "xctest" ]]; then
+        TEST_FRAMEWORK="$input_test_framework"
+        break
+      else
+        log_error "Invalid test framework. Choose 'swift-testing' or 'xctest'"
+      fi
+    done
+  fi
+
+  # Only prompt for git hooks if not provided via CLI
+  if [[ "$CLI_GIT_HOOKS_SET" == false ]]; then
+    echo
+    while true; do
+      read -p "Enable git pre-commit hooks? (Y/n): " yn
+      case $yn in
+        [Yy]*|"") USE_GIT_HOOKS=true; break;;
+        [Nn]*) USE_GIT_HOOKS=false; break;;
+        *) log_error "Please answer y or n";;
+      esac
+    done
+  fi
+
+  # Ask about project visibility if not specified via CLI
+  if [[ "$CLI_VISIBILITY_SET" == false ]]; then
     echo
     while true; do
       read -p "Is this a public project? (y/N): " yn
@@ -270,6 +386,8 @@ generate_template_files() {
   local template_vars=(
     "PROJECT_NAME=$PROJECT_NAME"
     "PROJECT_NAME_LOWER=$project_name_lower"
+    "BUNDLE_ID_ROOT=$BUNDLE_ID_ROOT"
+    "BUNDLE_IDENTIFIER=${BUNDLE_ID_ROOT}.${project_name_lower}"
     "DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET"
     "SWIFT_VERSION=$SWIFT_VERSION"
     "SIMULATOR_ARCH=$simulator_arch"
@@ -461,32 +579,45 @@ EOF
     log_success "Created MainViewModel.swift"
   fi
 
-  # Create basic unit test
-  local content_view_test_file="${PROJECT_NAME}Tests/Views/ContentViewTests.swift"
-  if [[ ! -f "$content_view_test_file" || "$FORCE_OVERWRITE" == true ]]; then
-    mkdir -p "${PROJECT_NAME}Tests/Views"
-    cat > "$content_view_test_file" <<EOF
-import XCTest
-import SwiftUI
-@testable import $PROJECT_NAME
-
-final class ContentViewTests: XCTestCase {
-    
-    func testContentViewExists() throws {
-        // Test that ContentView can be instantiated
-        let contentView = ContentView()
-        XCTAssertNotNil(contentView)
-    }
-}
-EOF
-    log_success "Created ContentViewTests.swift"
-  fi
-
-  # Create basic ViewModel test
+  # Create basic ViewModel test based on chosen framework
   local viewmodel_test_file="${PROJECT_NAME}Tests/ViewModels/MainViewModelTests.swift"
   if [[ ! -f "$viewmodel_test_file" || "$FORCE_OVERWRITE" == true ]]; then
     mkdir -p "${PROJECT_NAME}Tests/ViewModels"
-    cat > "$viewmodel_test_file" <<EOF
+    
+    if [[ "$TEST_FRAMEWORK" == "swift-testing" ]]; then
+      cat > "$viewmodel_test_file" <<EOF
+import Testing
+import Combine
+@testable import $PROJECT_NAME
+
+@MainActor
+struct MainViewModelTests {
+    
+    @Test("Initial state should be correct")
+    func initialState() {
+        let viewModel = MainViewModel()
+        #expect(viewModel.message == "Hello from $PROJECT_NAME!")
+        #expect(viewModel.isLoading == false)
+    }
+    
+    @Test("Refresh data should update message and loading state")
+    func refreshData() async {
+        let viewModel = MainViewModel()
+        
+        // Start refresh
+        viewModel.refreshData()
+        #expect(viewModel.isLoading == true)
+        
+        // Wait for completion
+        try? await Task.sleep(nanoseconds: 1_100_000_000) // 1.1 seconds
+        
+        #expect(viewModel.isLoading == false)
+        #expect(viewModel.message.contains("Data refreshed"))
+    }
+}
+EOF
+    else
+      cat > "$viewmodel_test_file" <<EOF
 import XCTest
 import Combine
 @testable import $PROJECT_NAME
@@ -516,7 +647,7 @@ final class MainViewModelTests: XCTestCase {
     func testRefreshData() throws {
         let expectation = XCTestExpectation(description: "Data refresh completes")
         
-        viewModel.$message
+        viewModel.\$message
             .dropFirst() // Skip initial value
             .sink { message in
                 XCTAssertTrue(message.contains("Data refreshed"))
@@ -532,7 +663,8 @@ final class MainViewModelTests: XCTestCase {
     }
 }
 EOF
-    log_success "Created MainViewModelTests.swift"
+    fi
+    log_success "Created MainViewModelTests.swift ($TEST_FRAMEWORK)"
   fi
 
   # Create basic UI test
@@ -542,7 +674,7 @@ EOF
 import XCTest
 
 final class ${PROJECT_NAME}UITests: XCTestCase {
-    var app: XCUIApplication!
+    var app: XCUIApplication
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -574,7 +706,7 @@ EOF
     log_success "Created ${PROJECT_NAME}UITests.swift"
   fi
 
-  # Create Info.plist
+  # Create Info.plist (required by XcodeGen even though properties are in project.yml)
   local info_plist_file="$PROJECT_NAME/Info.plist"
   if [[ ! -f "$info_plist_file" || "$FORCE_OVERWRITE" == true ]]; then
     cat > "$info_plist_file" <<EOF
@@ -583,17 +715,17 @@ EOF
 <plist version="1.0">
 <dict>
     <key>CFBundleDevelopmentRegion</key>
-    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <string>\$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleExecutable</key>
-    <string>$(EXECUTABLE_NAME)</string>
+    <string>\$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
-    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <string>\$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>$(PRODUCT_NAME)</string>
+    <string>\$(PRODUCT_NAME)</string>
     <key>CFBundlePackageType</key>
-    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+    <string>\$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
     <key>CFBundleVersion</key>
@@ -612,7 +744,7 @@ EOF
                     <key>UISceneConfigurationName</key>
                     <string>Default Configuration</string>
                     <key>UISceneDelegateClassName</key>
-                    <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+                    <string>\$(PRODUCT_MODULE_NAME).SceneDelegate</string>
                 </dict>
             </array>
         </dict>
@@ -660,6 +792,11 @@ generate_xcode_project() {
 }
 
 setup_git_hooks() {
+  if ! $USE_GIT_HOOKS; then
+    log_info "Git hooks disabled, skipping git hook setup"
+    return
+  fi
+
   if ! is_git_repo; then
     log_warning "Not in a git repository, skipping git hook setup"
     return
@@ -679,6 +816,7 @@ EOF
   
   chmod +x "$pre_commit_hook"
   log_success "Git pre-commit hook installed"
+  log_info "Hook will run formatting, linting, and build checks before commits"
 }
 
 display_next_steps() {
@@ -690,9 +828,12 @@ display_next_steps() {
   echo "Project Type: $PROJECT_TYPE"
   echo
   log_info "Next steps:"
-  echo "  1. Open $PROJECT_NAME.xcodeproj in Xcode"
-  echo "  2. Update bundle identifier in project.yml if needed"
-  echo "  3. Start building your app!"
+  echo "  1. Configure simulators for building and testing:"
+  echo "     ./scripts/simulator.sh list"
+  echo "     ./scripts/simulator.sh config-tests \"iPhone 16 Pro\""
+  echo "  2. Open $PROJECT_NAME.xcodeproj in Xcode"
+  echo "  3. Update bundle identifier in project.yml if needed"
+  echo "  4. Start building your app!"
   echo
   log_info "Available commands:"
   echo "  ./scripts/build.sh                    # Build for simulator"
@@ -700,7 +841,7 @@ display_next_steps() {
   echo "  ./scripts/lint.sh --fix               # Fix linting issues"
   echo "  ./scripts/format.sh --fix             # Fix formatting"
   echo "  ./scripts/preflight.sh                # Full CI check"
-  echo "  ./scripts/simulator.sh list           # List simulators"
+  echo "  ./scripts/simulator.sh list           # List available simulators"
   echo
   log_info "Need help? Check README.md or CLAUDE.md for guidance."
 }
@@ -717,8 +858,11 @@ main() {
 
   log_info "Setting up project with:"
   log_info "  Project Name: $PROJECT_NAME"
+  log_info "  Bundle Identifier: ${BUNDLE_ID_ROOT}.$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]')"
   log_info "  Deployment Target: iOS $DEPLOYMENT_TARGET"
   log_info "  Swift Version: $SWIFT_VERSION"
+  log_info "  Test Framework: $TEST_FRAMEWORK"
+  log_info "  Git Hooks: $(if $USE_GIT_HOOKS; then echo "enabled"; else echo "disabled"; fi)"
   log_info "  Project Type: $PROJECT_TYPE"
   echo
 

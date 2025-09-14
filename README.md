@@ -1,240 +1,134 @@
-# SwiftProjectTemplate
+# CITestApp
 
-A comprehensive iOS project template repository that includes all common infrastructure, tooling, and automation needed for professional Swift iOS development. This template eliminates the need to recreate boilerplate configuration for every new iOS project.
+A new iOS application built with SwiftUI
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Swift 5.10](https://img.shields.io/badge/Swift-5.10-orange.svg)](https://swift.org)
-[![iOS 18.0+](https://img.shields.io/badge/iOS-18.0%2B-blue.svg)](https://developer.apple.com/ios/)
+## Badges
 
-## Features
+![iOS](https://img.shields.io/badge/iOS-18.0%2B-blue)
+![Swift](https://img.shields.io/badge/Swift-5.10-orange)
+![Xcode](https://img.shields.io/badge/Xcode-15.0%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-🚀 **Zero Setup Time**: Clone and run `./scripts/setup.sh` to get a fully configured iOS project  
-⚙️ **Smart Configuration**: Uses `yq` to extract project info and auto-configure simulators  
-🎨 **Code Quality**: Integrated SwiftLint, SwiftFormat, and pre-commit hooks  
-🏗️ **XcodeGen Integration**: Project files generated from `project.yml` configuration  
-🤖 **CI/CD Ready**: GitHub Actions workflow for automated testing and validation  
-📱 **Simulator Management**: Advanced simulator configuration with auto-detection  
-🔧 **Developer Tools**: Comprehensive script ecosystem for building, testing, and deployment
+## Requirements
+
+- iOS 18.0+
+- Xcode 15.0+
+- Swift 5.10
 
 ## Quick Start
 
-### 1. Use this Template
+### Prerequisites
 
-Click "Use this template" on GitHub or:
-
-```bash
-# Option 1: Use GitHub CLI
-gh repo create MyAwesomeApp --template nickhart/SwiftProjectTemplate
-
-# Option 2: Clone and rename
-git clone https://github.com/nickhart/SwiftProjectTemplate.git MyAwesomeApp
-cd MyAwesomeApp
-rm -rf .git && git init
-```
-
-### 2. Run Setup
+Make sure you have [Homebrew](https://brew.sh) installed, then run:
 
 ```bash
-# Interactive mode
 ./scripts/setup.sh
-
-# Or CLI mode
-./scripts/setup.sh --project-name "MyAwesomeApp" --public
 ```
 
-### 3. Start Developing
+This will:
+- Install all required dependencies (SwiftLint, SwiftFormat, XcodeGen, etc.)
+- Generate the Xcode project from `project.yml`
+- Set up git pre-commit hooks
+
+### Building
 
 ```bash
-# Open in Xcode
-open MyAwesomeApp.xcodeproj
-
-# Or build from command line
+# Build for simulator
 ./scripts/build.sh
+
+# Build for device
+./scripts/build.sh --device
 ```
 
-## What You Get
+### Testing
 
-### 📁 Project Structure
-```
-MyAwesomeApp/
-├── MyAwesomeApp/
-│   ├── Models/              # Data models and Core Data entities
-│   ├── Views/               # SwiftUI views and UI components  
-│   ├── ViewModels/          # Business logic and view state
-│   ├── Services/            # Network, persistence, business services
-│   ├── Extensions/          # Swift extensions and utilities
-│   └── Helpers/             # Helper functions and utilities
-├── MyAwesomeAppTests/       # Unit tests (mirrors main structure)
-├── MyAwesomeAppUITests/     # UI tests
-└── scripts/                 # Development automation scripts
+```bash
+# Run unit tests
+./scripts/test.sh
+
+# Run UI tests
+./scripts/test.sh --ui
+
+# Run all tests
+./scripts/test.sh --all
 ```
 
-### 🛠️ Development Scripts
+### Code Quality
+
+```bash
+# Check and fix formatting
+./scripts/format.sh --fix
+
+# Check and fix linting issues
+./scripts/lint.sh --fix
+
+# Run full preflight check (format, lint, test)
+./scripts/preflight.sh
+```
+
+## Project Structure
+
+```
+CITestApp/
+├── Models/           # Data models and Core Data entities
+├── Views/            # SwiftUI views and UIKit view controllers
+├── ViewModels/       # Business logic and view state management
+├── Services/         # Network, persistence, and business services
+├── Extensions/       # Swift extensions and utilities
+└── Helpers/          # Helper functions and utilities
+```
+
+## Development Scripts
+
+This project includes several helper scripts in the `scripts/` directory:
 
 | Script | Purpose |
 |--------|---------|
 | `setup.sh` | One-time project setup and dependency installation |
-| `build.sh` | Build for simulator or device with various configurations |
-| `test.sh` | Run unit tests, UI tests, or both with smart simulator selection |
-| `lint.sh` | SwiftLint checking and auto-fixing |
-| `format.sh` | SwiftFormat checking and auto-fixing |
-| `simulator.sh` | **Enhanced** simulator management with auto-configuration |
+| `build.sh` | Build the app for simulator or device |
+| `test.sh` | Run unit tests, UI tests, or both |
+| `lint.sh` | Run SwiftLint and optionally fix issues |
+| `format.sh` | Run SwiftFormat and optionally fix issues |
+| `simulator.sh` | Manage iOS simulators for testing |
 | `preflight.sh` | Complete local CI check before committing |
-| `ci.sh` | Optimized script for CI/CD environments |
+| `ci.sh` | CI-specific build and test commands |
 
-### ⚡ Enhanced Features
+Run any script with `--help` to see available options.
 
-#### Smart Simulator Management
+## Configuration
+
+### XcodeGen
+
+This project uses [XcodeGen](https://github.com/yonaskolb/XcodeGen) to generate the Xcode project file from `project.yml`.
+
+To regenerate the project file:
 ```bash
-# Auto-configure simulators based on your project
+xcodegen
+```
+
+### Simulators
+
+Simulator configuration is managed in `simulator.yml`. To update simulator settings:
+
+```bash
+# Configure test simulators
 ./scripts/simulator.sh --config-tests "iPhone 16 Pro Max"
+
+# Configure UI test simulators
 ./scripts/simulator.sh --config-ui-tests "iPad Air 11-inch"
-
-# Show optimal OS version for your deployment target
-./scripts/simulator.sh optimal-os
 ```
 
-#### Hybrid Setup Script
-```bash
-# Interactive mode - prompts for missing info
-./scripts/setup.sh --project-name "MyApp"
+### Code Style
 
-# Full CLI mode
-./scripts/setup.sh --project-name "MyApp" --deployment-target "17.0" --public --force
-```
+- **SwiftLint**: Configuration in `.swiftlint.yml`
+- **SwiftFormat**: Configuration in `.swiftformat`
+- **Line Length**: 120 characters (warnings), 150 characters (errors)
+- **Indentation**: 2 spaces
 
-#### Intelligent Configuration
-- **Auto-detects** optimal iOS version from deployment target
-- **Auto-detects** Mac architecture (Apple Silicon vs Intel)
-- **Validates** device names against available simulators
-- **Syncs** simulator.yml with project.yml using `yq`
+## Contributing\n\nContributions are welcome! Please feel free to submit a Pull Request.
 
-### 🔧 Configuration Files
+## License\n\nThis project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-- **`.swiftlint.yml`** - Comprehensive linting rules for iOS development
-- **`.swiftformat`** - Consistent code formatting configuration  
-- **`project.yml`** - XcodeGen project definition (no more .pbxproj conflicts!)
-- **`simulator.yml`** - Simulator configuration for tests and UI tests
-- **`Brewfile`** - All development dependencies (yq, jq, xcodegen, etc.)
-- **`.github/workflows/`** - CI/CD automation with GitHub Actions
+## Support
 
-### 🎯 Code Quality
-
-- **Pre-commit hooks** automatically run formatting and linting
-- **GitHub Actions** validate every pull request
-- **Code coverage** collection and reporting
-- **Comprehensive error handling** with helpful suggestions
-
-## Advanced Usage
-
-### CLI Arguments
-
-The setup script supports both interactive and CLI modes:
-
-```bash
-./scripts/setup.sh [OPTIONS]
-
-Options:
-  --project-name <name>         Project name (e.g., "FooApp")
-  --deployment-target <version> iOS deployment target (default: 18.0)
-  --swift-version <version>     Swift version (default: 5.10)
-  --public                     Public project (includes LICENSE in README)
-  --private                    Private project (default)
-  --force                      Overwrite existing files
-  --help                       Show help
-```
-
-### Simulator Configuration
-
-Configure simulators that match your project needs:
-
-```bash
-# Configure test simulator
-./scripts/simulator.sh --config-tests "iPhone 15 Pro" --os 17.5
-
-# Configure UI test simulator  
-./scripts/simulator.sh --config-ui-tests "iPad Pro 12.9-inch" --force
-
-# Show current configuration
-./scripts/simulator.sh show-config
-```
-
-### Development Workflow
-
-```bash
-# Daily development
-./scripts/build.sh                    # Build project
-./scripts/test.sh --all               # Run all tests  
-./scripts/lint.sh --fix               # Fix linting issues
-
-# Before committing
-./scripts/preflight.sh                # Full quality check
-
-# CI/CD
-./scripts/ci.sh                       # Optimized for CI environments
-```
-
-## Requirements
-
-- **macOS** with Xcode 15.0+
-- **Homebrew** for dependency management
-- **Git** for version control
-
-The setup script will install all other dependencies automatically.
-
-## Dependencies
-
-Installed automatically via Brewfile:
-
-- **yq** - YAML processing and manipulation
-- **jq** - JSON processing for Xcode APIs  
-- **xcodegen** - Project file generation
-- **swiftlint** - Code linting
-- **swiftformat** - Code formatting
-- **xcbeautify** - Pretty build output
-- **gh** - GitHub CLI
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run `./scripts/preflight.sh` to ensure quality
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-## Template Philosophy
-
-This template embodies these principles:
-
-- **Zero Configuration**: Works out of the box with sensible defaults
-- **Intelligent Automation**: Scripts that understand your project structure
-- **Quality First**: Built-in code quality enforcement
-- **Developer Experience**: Optimized for daily development workflows
-- **CI/CD Ready**: Seamless integration with modern development practices
-
-## Roadmap
-
-See [TODO.md](TODO.md) for planned enhancements including:
-
-- 🎯 **Code Generation Tools**: Skeleton Model/View/ViewModel generators
-- 🍎 **Platform Expansion**: macOS, watchOS, tvOS support
-- 🏪 **Template Marketplace**: Community-contributed templates
-- 📊 **Project Analytics**: Health dashboards and metrics
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Inspired by the need for consistent iOS project setup
-- Built with modern iOS development best practices
-- Designed for teams and individual developers alike
-
----
-
-**Ready to build something amazing?** 🚀
-
-[Use this template](https://github.com/nickhart/SwiftProjectTemplate/generate) and start your next iOS project in minutes, not hours!
+If you encounter any issues or have questions, please [open an issue](https://github.com/yourusername/citestapp/issues) on GitHub.

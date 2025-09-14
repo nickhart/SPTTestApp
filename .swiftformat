@@ -1,4 +1,4 @@
-# SwiftFormat configuration for {{PROJECT_NAME}}
+# SwiftFormat configuration for CITestApp
 # For more information: https://github.com/nicklockwood/SwiftFormat
 
 # Version
@@ -22,7 +22,6 @@
 --fractiongrouping               disabled
 --fragment                       false
 --funcattributes                 prev-line
---groupedImports                 alphabetized
 --guardelse                      same-line
 --hexgrouping                    4,8
 --hexliteralcase                 uppercase
@@ -34,24 +33,24 @@
 --marktypes                      always
 --maxwidth                       120
 --modifierorder                  override,public,open,internal,fileprivate,private,static,class,final,required,convenience,lazy
---nevertrailing                  
+--nevertrailing
 --nospaceoperators               ...,..<
---nowrapoperators                
+--nowrapoperators
 --octalgrouping                  4,8
 --operatorfunc                   spaced
 --patternlet                     hoist
 --ranges                         spaced
 --self                           init-only
---selfrequired                   
+--selfrequired
 --semicolons                     inline
 --shortoptionals                 always
 --smarttabs                      enabled
 --stripunusedargs                closure-only
 --tabwidth                       unspecified
---trailingclosures               
+--trailingclosures
 --trimwhitespace                 always
 --typeattributes                 prev-line
---typemark                       
+--typemark
 --varattributes                  same-line
 --voidtype                       void
 --wraparguments                  preserve
